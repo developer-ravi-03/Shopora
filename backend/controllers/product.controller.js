@@ -41,7 +41,7 @@ export const getFeaturedProducts = async (req, res) => {
 
 export const createProduct = async (req, res) => {
   try {
-    const { name, description, price, image, category } = req.body;
+    const { name, description, price, image, category, stock } = req.body;
 
     let cloudinaryResponse = null;
 
@@ -59,11 +59,54 @@ export const createProduct = async (req, res) => {
         ? cloudinaryResponse.secure_url
         : "",
       category,
+      stock: stock || 0, // Add stock field
     });
 
     res.status(201).json(product);
   } catch (error) {
     console.log("Error in createProduct controller", error.message);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const updateProduct = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, price, image, category, stock } = req.body;
+
+    let cloudinaryResponse = null;
+
+    // If new image is provided, upload to Cloudinary
+    if (image && image !== "") {
+      cloudinaryResponse = await cloudinary.uploader.upload(image, {
+        folder: "products",
+      });
+    }
+
+    const updateData = {
+      name,
+      description,
+      price,
+      category,
+      stock,
+    };
+
+    // Only update image if new one is provided
+    if (cloudinaryResponse?.secure_url) {
+      updateData.image = cloudinaryResponse.secure_url;
+    }
+
+    const product = await Product.findByIdAndUpdate(id, updateData, {
+      new: true,
+    });
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    res.json(product);
+  } catch (error) {
+    console.log("Error in updateProduct controller", error.message);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
@@ -80,7 +123,7 @@ export const deleteProduct = async (req, res) => {
       const publicId = product.image.split("/").pop().split(".")[0]; //this will get the id of the image
       try {
         await cloudinary.uploader.destroy(`products/${publicId}`);
-        console.log("deleted image from cloduinary");
+        // console.log("deleted image from cloduinary");
       } catch (error) {
         console.log("error deleting image from cloduinary", error);
       }
@@ -157,3 +200,27 @@ async function updateFeaturedProductsCache() {
     console.log("error in update cache function");
   }
 }
+
+export const updateProductStock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { quantity } = req.body; // quantity to reduce from stock
+
+    const product = await Product.findById(id);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    if (product.stock < quantity) {
+      return res.status(400).json({ message: "Insufficient stock" });
+    }
+
+    product.stock -= quantity;
+    await product.save();
+
+    res.json({ message: "Stock updated successfully", product });
+  } catch (error) {
+    console.log("Error in updateProductStock controller", error.message);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};

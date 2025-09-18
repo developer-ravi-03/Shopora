@@ -1,6 +1,7 @@
 import Coupon from "../models/coupon.model.js";
 import Order from "../models/order.model.js";
 import { stripe } from "../lib/stripe.js";
+import User from "../models/user.model.js";
 
 export const createCheckoutSession = async (req, res) => {
   try {
@@ -18,7 +19,7 @@ export const createCheckoutSession = async (req, res) => {
 
       return {
         price_data: {
-          currency: "inr",
+          currency: "usd",
           product_data: {
             name: product.name,
             images: [product.image],
@@ -44,7 +45,7 @@ export const createCheckoutSession = async (req, res) => {
     }
 
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card", "upi"],
+      payment_method_types: ["card"],
       line_items: lineItems,
       mode: "payment",
       success_url: `${process.env.CLIENT_URL}/purchase-success?session_id={CHECKOUT_SESSION_ID}`,
@@ -69,7 +70,8 @@ export const createCheckoutSession = async (req, res) => {
       },
     });
 
-    //it is for creating coupan
+    // console.log("Created Checkout Session:", session.id);
+
     if (totalAmount >= 20000) {
       await createNewCoupon(req.user._id);
     }
@@ -88,37 +90,48 @@ export const checkoutSuccess = async (req, res) => {
     const session = await stripe.checkout.sessions.retrieve(sessionId);
 
     if (session.payment_status === "paid") {
+      // Prevent duplicate orders
+      const existingOrder = await Order.findOne({ stripeSessionId: sessionId });
+      if (existingOrder) {
+        return res.status(200).json({
+          success: true,
+          message: "Payment already processed, order already exists.",
+          orderId: existingOrder._id,
+        });
+      }
+
+      // Deactivate coupon if used
       if (session.metadata.couponCode) {
         await Coupon.findOneAndUpdate(
           {
             code: session.metadata.couponCode,
             userId: session.metadata.userId,
           },
-          {
-            isActive: false,
-          }
+          { isActive: false }
         );
       }
 
-      // create a new Order
+      // Create a new Order
       const products = JSON.parse(session.metadata.products);
       const newOrder = new Order({
         user: session.metadata.userId,
-        products: products.map((product) => ({
-          product: product.id,
-          quantity: product.quantity,
-          price: product.price,
+        products: products.map((p) => ({
+          product: p.id,
+          quantity: p.quantity,
+          price: p.price,
         })),
-        totalAmount: session.amount_total / 100, // convert from cents to rupees,
+        totalAmount: session.amount_total / 100,
         stripeSessionId: sessionId,
       });
 
       await newOrder.save();
 
-      res.status(200).json({
+      // 🟢 Clear cart items from the User document
+      await User.findByIdAndUpdate(session.metadata.userId, { cartItems: [] });
+
+      return res.status(200).json({
         success: true,
-        message:
-          "Payment successful, order created, and coupon deactivated if used.",
+        message: "Payment successful, order created and cart cleared.",
         orderId: newOrder._id,
       });
     }

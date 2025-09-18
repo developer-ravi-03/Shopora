@@ -23,6 +23,12 @@ const productSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    stock: {
+      type: Number,
+      required: true,
+      min: 0,
+      default: 0,
+    },
     isFeatured: {
       type: Boolean,
       default: false,
@@ -32,5 +38,4 @@ const productSchema = new mongoose.Schema(
 );
 
 const Product = mongoose.model("Product", productSchema);
-
 export default Product;
