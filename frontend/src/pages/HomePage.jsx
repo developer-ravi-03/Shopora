@@ -2,7 +2,7 @@
 import { useEffect } from "react";
 import CategoryItem from "../components/CategoryItem";
 import { useProductStore } from "../stores/useProductStore";
-// import FeaturedProducts from "../components/FeaturedProducts";
+import FeaturedProducts from "../components/FeaturedProducts";
 
 const categories = [
   { href: "/jeans", name: "Jeans", imageUrl: "/jeans.jpg" },
@@ -17,9 +17,9 @@ const categories = [
 const HomePage = () => {
   const { fetchFeaturedProducts, products, isLoading } = useProductStore();
 
-  // useEffect(() => {
-  //   fetchFeaturedProducts();
-  // }, [fetchFeaturedProducts]);
+  useEffect(() => {
+    fetchFeaturedProducts();
+  }, [fetchFeaturedProducts]);
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100">
@@ -75,9 +75,9 @@ const HomePage = () => {
           ))}
         </div>
 
-        {/* {!isLoading && products.length > 0 && (
+        {!isLoading && products.length > 0 && (
           <FeaturedProducts featuredProducts={products} />
-        )} */}
+        )}
       </div>
 
       {/* Newsletter Section */}
