@@ -15,7 +15,7 @@ import { connectDB } from "./lib/db.js";
 
 import axios from "axios";
 //for reload
-const url = `https://social-media-app-gkbm.onrender.com`;
+const url = `https://shopify-2in1.onrender.com`;
 const interval = 30000;
 
 function reloadWebsite() {
