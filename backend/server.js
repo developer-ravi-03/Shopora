@@ -13,6 +13,31 @@ import analyticsRoutes from "./routes/analytics.route.js";
 
 import { connectDB } from "./lib/db.js";
 
+import axios from "axios";
+//for reload
+const url = `https://social-media-app-gkbm.onrender.com`;
+const interval = 30000;
+
+function reloadWebsite() {
+  axios
+    .get(url)
+    .then((response) => {
+      console.log(
+        `Reloaded at ${new Date().toISOString()}: Status Code ${
+          response.status
+        }`
+      );
+    })
+    .catch((error) => {
+      console.error(
+        `Error reloading at ${new Date().toISOString()}:`,
+        error.message
+      );
+    });
+}
+
+setInterval(reloadWebsite, interval);
+
 dotenv.config();
 
 const app = express();
